@@ -1,0 +1,27 @@
+# Ignore .NET build artifacts
+bin/
+obj/
+publish/
+
+# Ignore user-specific files
+*.user
+*.vs
+.vscode/
+.idea/
+
+# Ignore logs and local environment settings
+*.log
+logs/
+.env
+
+# Ignore dependency caches
+packages/
+.nuget/
+
+# Ignore Docker-related files
+docker-compose.override.yml
+.dockerignore
+
+# Ignore other system files
+**/.DS_Store
+**/Thumbs.db
