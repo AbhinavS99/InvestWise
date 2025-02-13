@@ -1,30 +1,121 @@
 services:
-  auth-db:
-    image: postgres:16
-    container_name: investwise-postgres
-    restart: always
+  # api-gateway:
+  #   container_name: investwise-api-gateway
+  #   build:
+  #     context: ./ApiGateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5200:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   depends_on:
+  #     auth-service:
+  #       condition: service_healthy
+  #   networks:
+  #     - app-network
+
+  # auth-service:
+  #   container_name: investwise-auth
+  #   build:
+  #     context: ./AuthService
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max_size: "10m"
+  #       max_file: "3"
+  #   depends_on:
+  #     auth-db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+  dashboard-service:
+    container_name: investwise-dashboard-service
+    build:
+      context: ./DashboardService
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./DashboardService/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      main-db:
+        condition: service_healthy
+
+  main-db:
+    image: mysql:8.0
+    container_name: investwise-mysql-container
     environment:
-      POSTGRES_DB: InvestWiseDB
-      POSTGRES_USER: investmaster
-      POSTGRES_PASSWORD: Abhiji@99
+      MYSQL_ROOT_PASSWORD: Abhiji@99
+      MYSQL_DATABASE: InvestWise-MainDB
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: WelcomeInteralPuppy_123
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-  
-  redis:
-    image: redis:latest
-    container_name: investwise-redis
+      - mysql-data:/var/lib/mysql
     restart: always
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-pWelcomeInteralPuppy_123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
 
+  # auth-db:
+  #   image: postgres:16
+  #   container_name: investwise-postgres
+  #   restart: always
+  #   environment:
+  #     POSTGRES_DB: InvestWiseDB
+  #     POSTGRES_USER: investmaster
+  #     POSTGRES_PASSWORD: Abhiji@99
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - app-network
+  
+  # redis:
+  #   image: redis:latest
+  #   container_name: investwise-redis
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
+
 volumes:
-  postgres-data:
+  # postgres-data:
+  mysql-data:
 
 networks:
   app-network:

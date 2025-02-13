@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic[email]
+python-dotenv
+bcrypt
+sqlalchemy
+asyncmy
+databases
+cryptography
+itsdangerous
+python-jose
