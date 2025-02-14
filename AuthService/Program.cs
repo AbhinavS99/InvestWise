@@ -32,7 +32,7 @@ builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-var redis = ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false,connectTimeout=10000");
+var redis = ConnectionMultiplexer.Connect("redis:6379,abortConnect=false,connectTimeout=10000");
 builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
 
 
