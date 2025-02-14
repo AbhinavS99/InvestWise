@@ -74,7 +74,7 @@ namespace AuthService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogInformation($"JWT Validation Error: {ex.Message}")
+                _logger.LogInformation($"JWT Validation Error: {ex.Message}");
                 return false;
             }
 
