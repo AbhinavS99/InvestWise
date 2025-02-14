@@ -17,21 +17,26 @@ namespace AuthService.Controllers
             _redis = redis;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> HealthCheck()
+        [HttpGet("report")]
+        public async Task<IActionResult> HealthCheckReport()
         {
             var healthReport = new
             {
                 DatabaseConnected = await IsDatabaseConnected(),
                 RedisConnected = IsRedisConnected()
             };
-
             if (!healthReport.DatabaseConnected || !healthReport.RedisConnected)
             {
                 return StatusCode(500, healthReport);
             }
 
             return Ok(healthReport);
+        }
+
+        [HttpGet("main")]
+        public IActionResult HealthCheckMain()
+        {
+            return Ok(new { status = "healthy" });
         }
 
         private async Task<bool> IsDatabaseConnected()
