@@ -52,7 +52,7 @@ services:
     env_file:
       - ./DashboardService/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/dashboard/health"]
       interval: 10s
       timeout: 5s
       retries: 3
