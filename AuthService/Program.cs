@@ -66,7 +66,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "InvestWise API",
+        Title = "InvestWise Auth API",
         Version = "v1"
     });
 });
@@ -93,7 +93,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "InvestWise API v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "InvestWise Auth API v1");
     });
 }
 
