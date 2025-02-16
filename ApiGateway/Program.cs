@@ -1,18 +1,19 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Yarp.ReverseProxy.Configuration;
 using Microsoft.OpenApi.Models;
-using System.IdentityModel.Tokens.Jwt;
-using Yarp.ReverseProxy.Transforms; // ✅ Ensure you have this import
+using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 using Microsoft.IdentityModel.Logging;
-
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-IdentityModelEventSource.ShowPII = true;
-IdentityModelEventSource.LogCompleteSecurityArtifact = true;
 
-// Enable CORS
+if (builder.Environment.IsDevelopment())
+{
+    IdentityModelEventSource.ShowPII = true;
+    IdentityModelEventSource.LogCompleteSecurityArtifact = true;
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -23,22 +24,23 @@ builder.Services.AddCors(options =>
     });
 });
 
-// JWT Settings from configuration
+
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
-Console.WriteLine($"🔑 API Gateway JWT Key Length: {key.Length}, {key}, {jwtSettings["Key"]}");
+Console.WriteLine($"🔑 API Gateway JWT Key Length: {key.Length}");
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
-    { // Auth Service URL
+    {
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtSettings["Issuer"],  // "InvestWise"
+            ValidIssuer = jwtSettings["Issuer"],
             ValidateAudience = true,
-            ValidAudience = jwtSettings["Audience"],  // "InvestWiseUsers"
-            ValidateLifetime = true,  // Ensures token is still valid
+            ValidAudience = jwtSettings["Audience"],
+            ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ValidateIssuerSigningKey = true,
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
@@ -48,41 +50,29 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"❌ Authentication Failed: {context.Exception}");
-                if (context.Exception.InnerException != null)
-                {
-                    Console.WriteLine($"➡ Inner Exception: {context.Exception.InnerException}");
-                }
+                Console.WriteLine($"Authentication Failure: {context.Exception.GetType().Name} - {context.Exception.Message}");
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
-                Console.WriteLine("✅ Token Validated Successfully");
+                Console.WriteLine("Token Validation Succeeded");
                 var jsonWebToken = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
-
                 if (jsonWebToken != null)
                 {
-                    Console.WriteLine($"📜 Token Type: JsonWebToken");
-                    foreach (var claim in jsonWebToken.Claims)
-                    {
-                        Console.WriteLine($"{claim.Type}: {claim.Value}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("⚠️ SecurityToken is not JsonWebToken, continuing...");
+                    Console.WriteLine($"Validated Token Claims: [sub={jsonWebToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value}, iss={jsonWebToken.Issuer}, aud={jsonWebToken.Audiences.FirstOrDefault()}]");
                 }
                 return Task.CompletedTask;
             }
         };
     });
 
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Authenticated", policy => policy.RequireAuthenticatedUser());
 });
 
-// Reverse Proxy Configuration with Authorization
+
 builder.Services.AddReverseProxy()
     .LoadFromMemory(
         [
@@ -123,55 +113,44 @@ builder.Services.AddReverseProxy()
     {
         builderContext.AddRequestTransform(async transformContext =>
         {
-            var authHeader = transformContext.HttpContext.Request.Headers["Authorization"];
-            if (!string.IsNullOrEmpty(authHeader))
+            var authHeaderExists = transformContext.HttpContext.Request.Headers.ContainsKey("Authorization");
+            if (authHeaderExists)
             {
-                Console.WriteLine($"🔑 Forwarding Authorization Header: {authHeader}");
-                transformContext.ProxyRequest.Headers.Remove("Authorization");
-                transformContext.ProxyRequest.Headers.Add("Authorization", authHeader.ToString());
+                Console.WriteLine("Forwarding Authorization Header");
             }
         });
     });
 
-// Enable Swagger for API Documentation
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "InvestWise ApiGateway API",
+        Title = "InvestWise API Gateway",
         Version = "v1"
     });
 });
 
 builder.Services.AddControllers();
-Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
-var app = builder.Build();
 
+var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "InvestWise ApiGateway v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "InvestWise API Gateway v1");
     });
 }
 
-// Debug Incoming Request Headers
+
 app.Use(async (context, next) =>
 {
-    Console.WriteLine("📥 Incoming Request:");
-    Console.WriteLine($"➡ Path: {context.Request.Path}");
-    Console.WriteLine($"➡ Method: {context.Request.Method}");
-
-    foreach (var header in context.Request.Headers)
-    {
-        Console.WriteLine($"📝 Header: {header.Key} = {header.Value}");
-    }
-
+    Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
     await next();
 });
 
-// Enforce Authentication & Authorization Middleware
+// Middleware pipeline setup
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
