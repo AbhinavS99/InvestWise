@@ -16,6 +16,6 @@ app = FastAPI(
 )
 
 app = FastAPI()
-@app.get("/health")
+@app.get("/api/dashboard/health")
 def health_check():
     return {"status": "healthy"}
