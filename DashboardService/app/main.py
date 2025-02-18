@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from app.db import database
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from app.utils.jwt_utils import verify_gateway_token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +17,11 @@ app = FastAPI(
 )
 
 app = FastAPI()
+
 @app.get("/api/dashboard/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/api/dashboard/protected", dependencies=[Depends(verify_gateway_token)])
+def protected_route():
+    return {"message": "You accessed a protected route via API Gateway!"}

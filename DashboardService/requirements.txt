@@ -9,3 +9,4 @@ databases
 cryptography
 itsdangerous
 python-jose
+PyJWT
