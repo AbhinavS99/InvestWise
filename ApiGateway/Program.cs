@@ -5,6 +5,8 @@ using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Microsoft.IdentityModel.Logging;
 using System.Text;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,9 +28,10 @@ builder.Services.AddCors(options =>
 
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var forwardedHeaderSettings = builder.Configuration.GetSection("ForwadedHeaderSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
-Console.WriteLine($"🔑 API Gateway JWT Key Length: {key.Length}");
-
+var forwardedKey = Encoding.UTF8.GetBytes(forwardedHeaderSettings["Key"]);
+Console.WriteLine($"{forwardedKey}, {forwardedHeaderSettings["Key"]}");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -118,6 +121,26 @@ builder.Services.AddReverseProxy()
             {
                 Console.WriteLine("Forwarding Authorization Header");
             }
+            var securityKey = new SymmetricSecurityKey(forwardedKey);
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(
+                    [
+                        new Claim("role", "gateway"),
+                        new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
+                    ]
+                ),
+                Expires = DateTime.UtcNow.AddMinutes(5),
+                SigningCredentials = credentials
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            transformContext.ProxyRequest.Headers.Add("X-Gateway-Auth", tokenString);
         });
     });
 
